@@ -143,7 +143,7 @@ Context:
 ${additionalPagesBlock}
 ═══════════════════════════════════════════════════════════════════════
 DETECTED FEATURES MATRIX (ground truth from the live crawl):
-═══════════════════════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════════════════════ 
 ${presentBlock}
 ${likelyBlock}
 ${uncertainBlock}

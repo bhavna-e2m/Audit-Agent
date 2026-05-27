@@ -681,12 +681,19 @@ function removeOtherPagesSectionIfNotApplicable(markdown, includeOtherPages) {
   if (includeOtherPages) return markdown;
 
   const lines = markdown.split(/\r?\n/);
-  const start = lines.findIndex((l) => /^##\s*Other Pages - Key Areas of Improvement/i.test(l));
+  const start = lines.findIndex((l) =>
+    /^(?:##\s*)?(?:\*\*)?\s*Other Pages(?:\s*-\s*Key Areas of Improvement)?\s*(?:\*\*)?\s*$/i.test(
+      String(l || "").trim()
+    )
+  );
   if (start === -1) return markdown;
 
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i += 1) {
-    if (/^##\s+/.test(lines[i])) {
+    if (
+      /^##\s+/.test(lines[i]) ||
+      /^(?:\*\*)?\s*Final Recommendation\s*(?:\*\*)?\s*$/i.test(String(lines[i] || "").trim())
+    ) {
       end = i;
       break;
     }
@@ -705,7 +712,11 @@ function enforceOtherPageUrlCoverage(markdown, additionalPageUrls = [], includeO
   if (!Array.isArray(additionalPageUrls) || additionalPageUrls.length === 0) return markdown;
 
   const lines = markdown.split(/\r?\n/);
-  const headingIdx = lines.findIndex((l) => /^##\s*Other Pages - Key Areas of Improvement/i.test(l));
+  const headingIdx = lines.findIndex((l) =>
+    /^(?:##\s*)?(?:\*\*)?\s*Other Pages(?:\s*-\s*Key Areas of Improvement)?\s*(?:\*\*)?\s*$/i.test(
+      String(l || "").trim()
+    )
+  );
   if (headingIdx === -1) return markdown;
 
   let sectionEnd = lines.length;
@@ -730,7 +741,11 @@ function enforceOtherPageUrlCoverage(markdown, additionalPageUrls = [], includeO
 function normalizeOtherPagesNumbering(markdown) {
   if (!markdown) return markdown;
   const lines = markdown.split(/\r?\n/);
-  const start = lines.findIndex((l) => /^##\s*Other Pages - Key Areas of Improvement/i.test(l));
+  const start = lines.findIndex((l) =>
+    /^(?:##\s*)?(?:\*\*)?\s*Other Pages(?:\s*-\s*Key Areas of Improvement)?\s*(?:\*\*)?\s*$/i.test(
+      String(l || "").trim()
+    )
+  );
   if (start === -1) return markdown;
 
   let end = lines.length;
@@ -752,6 +767,62 @@ function normalizeOtherPagesNumbering(markdown) {
   }
 
   return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function enforceOtherPagesCrawlTruth(markdown, pages = [], additionalPageUrls = [], includeOtherPages = true) {
+  if (!includeOtherPages) return markdown;
+  if (!Array.isArray(additionalPageUrls) || additionalPageUrls.length === 0) return markdown;
+
+  const lines = markdown.split(/\r?\n/);
+  const start = lines.findIndex((l) =>
+    /^(?:##\s*)?(?:\*\*)?\s*Other Pages(?:\s*-\s*Key Areas of Improvement)?\s*(?:\*\*)?\s*$/i.test(
+      String(l || "").trim()
+    )
+  );
+  if (start === -1) return markdown;
+
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i += 1) {
+    if (
+      /^##\s+/.test(lines[i]) ||
+      /^(?:\*\*)?\s*Final Recommendation\s*(?:\*\*)?\s*$/i.test(String(lines[i] || "").trim())
+    ) {
+      end = i;
+      break;
+    }
+  }
+
+  const sectionText = lines.slice(start, end).join("\n");
+  const referencedUrls = Array.from(
+    new Set(Array.from(sectionText.matchAll(/^\s*URL:\s*(https?:\/\/\S+)\s*$/gim)).map((m) => m[1]))
+  );
+  if (!referencedUrls.length) return markdown;
+
+  const crawledRequested = additionalPageUrls.filter((requested) =>
+    pages.some((page) => urlsEquivalent(page.url, requested))
+  );
+  const includesInvalidUrl = referencedUrls.some(
+    (u) => !crawledRequested.some((c) => urlsEquivalent(u, c))
+  );
+  if (!includesInvalidUrl) return markdown;
+
+  const rebuilt = ["## Other Pages - Key Areas of Improvement", ""];
+  additionalPageUrls.forEach((requestedUrl, idx) => {
+    const crawledPage = pages.find((p) => urlsEquivalent(p.url, requestedUrl));
+    rebuilt.push(`${idx + 1}. ${crawledPage?.title || `Additional Page ${idx + 1}`}`);
+    rebuilt.push(`URL: ${requestedUrl}`);
+    rebuilt.push(
+      crawledPage
+        ? "No critical fixes identified from captured evidence."
+        : "This requested page could not be crawled, so no recommendations are included."
+    );
+    rebuilt.push("");
+  });
+
+  return [...lines.slice(0, start), ...rebuilt, ...lines.slice(end)]
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function dropRecommendationsForNoFixSections(markdown) {
@@ -845,7 +916,7 @@ function buildSectionScreenshotLookup(pages, toPublicAssetUrl) {
   return lookup;
 }
 
-function sectionKeyFromLabel(area, sectionLabel = "") {
+function sectionKeyFromLabel(area, sectionLabel = "") { 
   const text = sectionLabel.toLowerCase();
   if (area === "home") {
     if (text.includes("announcement")) return "announcement";
@@ -1234,6 +1305,7 @@ CRITICAL REPAIR INSTRUCTIONS:
   markdown = removeOtherPagesSectionIfNotApplicable(markdown, includeOtherPages);
   markdown = enforceOtherPageUrlCoverage(markdown, additionalPageUrls, includeOtherPages);
   markdown = normalizeOtherPagesNumbering(markdown);
+  markdown = enforceOtherPagesCrawlTruth(markdown, pages, additionalPageUrls, includeOtherPages);
   markdown = dropRecommendationsForNoFixSections(markdown);
   markdown = enforceImprovementFields(markdown);
   let normalizedStatusCount = 0;
@@ -1274,6 +1346,7 @@ ${reliabilityChecks.failures.map((f, idx) => `${idx + 1}. ${f}`).join("\n")}
       repaired = removeOtherPagesSectionIfNotApplicable(repaired, includeOtherPages);
       repaired = enforceOtherPageUrlCoverage(repaired, additionalPageUrls, includeOtherPages);
       repaired = normalizeOtherPagesNumbering(repaired);
+      repaired = enforceOtherPagesCrawlTruth(repaired, pages, additionalPageUrls, includeOtherPages);
       repaired = dropRecommendationsForNoFixSections(repaired);
       repaired = enforceImprovementFields(repaired);
       const repairedNormalizedStatuses = normalizeInvalidStatusValues(repaired);

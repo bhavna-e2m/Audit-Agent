@@ -372,11 +372,6 @@ form.addEventListener("submit", async (event) => {
   const url = document.getElementById("url").value.trim();
   const createMarkdown = document.getElementById("createMarkdown").checked;
   const createGoogleDoc = document.getElementById("createGoogleDoc").checked;
-  const referenceSiteUrls = document
-    .getElementById("referenceSiteUrls")
-    .value.split("\n")
-    .map((s) => s.trim())
-    .filter(Boolean);
   const additionalPageUrls = document
     .getElementById("additionalPageUrls")
     .value.split("\n")
@@ -389,7 +384,6 @@ form.addEventListener("submit", async (event) => {
       appBaseUrl: window.location.origin,
       createMarkdown,
       createGoogleDoc,
-      referenceSiteUrls,
       additionalPageUrls
     });
 

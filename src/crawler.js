@@ -482,7 +482,13 @@ function shouldQueueBalanced(type, stats, targetEach) {
   return true;
 }
 
-function shouldQueueLink(startUrl, link, stats = {}, targets = resolveCrawlTargets()) {
+function shouldQueueLink(
+  startUrl,
+  link,
+  stats = {},
+  targets = resolveCrawlTargets(),
+  additionalPageKeys = new Set()
+) {
   const sameDomain = new URL(link).hostname === new URL(startUrl).hostname;
   if (!sameDomain) return false;
 
@@ -493,7 +499,7 @@ function shouldQueueLink(startUrl, link, stats = {}, targets = resolveCrawlTarge
     return shouldQueueBalanced("product", stats, targets.each);
   }
 
-  return /\/pages\/faq|\/faq|\/contact|\/warranty/i.test(link);
+  return isRequestedAdditionalPage(link, additionalPageKeys);
 }
 
 function buildAdditionalPageKeySet(additionalPageUrls = []) {
@@ -590,7 +596,7 @@ function enqueueDiscoveredLinks(queue, queued, startUrl, signal, stats, addition
   const otherLinks = [];
 
   for (const link of signal.links || []) {
-    if (!shouldQueueLink(startUrl, link, stats, targets)) continue;
+    if (!shouldQueueLink(startUrl, link, stats, targets, additionalPageKeys)) continue;
     const linkKey = visitKeyForUrl(link);
     if (!linkKey || queued.has(link)) continue;
     if (/\/collections\//i.test(link)) collectionLinks.push(link);
