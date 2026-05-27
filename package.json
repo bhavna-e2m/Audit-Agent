@@ -1,0 +1,25 @@
+{
+  "name": "shopify-theme-audit-agent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "AI agent that generates Shopify theme audit reports from a store URL",
+  "scripts": {
+    "audit": "node src/index.js",
+    "dev": "node src/server.js",
+    "google:token": "node scripts/getGoogleRefreshToken.cjs",
+    "lint": "node -e \"console.log('No linter configured yet')\""
+  },
+  "dependencies": {
+    "cheerio": "^1.1.2",
+    "docx": "^9.5.1",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "googleapis": "^140.0.1",
+    "lighthouse": "^13.1.0",
+    "open": "^10.2.0",
+    "openai": "^4.104.0",
+    "playwright": "^1.55.0",
+    "puppeteer": "^24.42.0"
+  }
+}

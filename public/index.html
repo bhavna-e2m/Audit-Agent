@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shopify Audit Generator</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="hero">
+        <h1>Shopify Audit Generator</h1>
+        <p class="subtitle">
+          Generate client-ready Shopify audit documents with section-by-section homepage checks and
+          downloadable report files.
+        </p>
+      </header>
+
+      <section class="info card">
+        <h2>How it works</h2>
+        <ol>
+          <li>Enter a Shopify store URL</li>
+          <li>Watch pages crawl live, then get a full professional Shopify audit</li>
+          <li>Download report or open the generated Google Doc link</li>
+        </ol>
+      </section>
+
+      <form id="audit-form" class="card">
+        <label for="url">Shopify Store URL</label>
+        <input
+          id="url"
+          name="url"
+          type="url"
+          placeholder="https://your-store.com or myshopify.com preview link"
+          required
+        />
+        <p style="margin:0;color:#64748b;font-size:13px;">
+          Paste your live domain or a Shopify theme preview URL. Editor tracking params (<code>_ab</code>, <code>_bt</code>, …) are cleaned automatically; <code>preview_theme_id</code> is kept.
+        </p>
+        <button id="previewBtn" type="button" class="secondary">Preview Site & Theme</button>
+
+        <section id="preview" class="preview hidden"></section>
+
+        <label for="referenceSiteUrls">Reference Shopify Website URLs (one per line)</label>
+        <textarea
+          id="referenceSiteUrls"
+          name="referenceSiteUrls"
+          rows="3"
+          placeholder="https://example-shopify-store.com&#10;https://another-shopify-store.com"
+        ></textarea>
+        <label for="additionalPageUrls">Additional Pages to Audit (one per line)</label>
+        <textarea
+          id="additionalPageUrls"
+          name="additionalPageUrls"
+          rows="3"
+          placeholder="https://www.example.com/pages/about-us&#10;https://www.example.com/pages/shipping-policy"
+        ></textarea>
+        <p style="margin:0;color:#64748b;font-size:13px;">
+          Optional. Add extra same-domain URLs if you want audit coverage beyond home, collection, and product.
+        </p>
+        <label>
+          <input id="createMarkdown" type="checkbox" checked />
+          Create Markdown (.md) file
+        </label>
+        <label>
+          <input id="createGoogleDoc" type="checkbox" />
+          Also create Google Doc automatically (if credentials configured)
+        </label>
+        <button id="submitBtn" type="submit">Generate Audit Document</button>
+      </form>
+
+      <section id="status" class="status hidden"></section>
+      <section id="liveCrawl" class="live-crawl hidden" aria-live="polite"></section>
+      <section id="result" class="result hidden"></section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
