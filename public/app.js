@@ -269,16 +269,9 @@ function formatThemeHtml(theme) {
   }
 
   const themeName =
-    resolved.instanceName || resolved.schemaName || resolved.displayName;
+    resolved.schemaName || resolved.instanceName || resolved.displayName;
   let html = `<div><strong>Theme name:</strong> ${escapeHtml(themeName)}</div>`;
 
-  if (
-    resolved.schemaName &&
-    resolved.instanceName &&
-    resolved.instanceName !== resolved.schemaName
-  ) {
-    html += `<div class="theme-meta"><strong>Base theme:</strong> ${escapeHtml(resolved.schemaName)}</div>`;
-  }
   if (resolved.schemaVersion) {
     html += `<div class="theme-meta"><strong>Schema version:</strong> ${escapeHtml(resolved.schemaVersion)}</div>`;
   }
