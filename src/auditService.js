@@ -984,6 +984,127 @@ function stripCardDetailWhenPresent(markdown, pages = [], signalFacts = {}) {
 }
 
 /**
+ * GENERAL PAGE-SCAN GUARD (applies to ALL page types).
+ * Scans each crawled page's real content/markup and removes any finding that
+ * claims a feature is MISSING / LACKING / ABSENT when the scan shows the feature
+ * is actually present on that page. This generalizes the home-section digest
+ * cross-check to feature-level findings on collection and product pages too, so
+ * the report only flags something missing if the page scan can't find it.
+ *
+ * Conservative by design: a finding subsection is dropped only when BOTH
+ *   (a) its title names a feature the scan confirmed present, AND
+ *   (b) the title/body frames it as a gap (lacks / missing / absent / no /
+ *       basic / limited / could be more / not comprehensive).
+ * Additive advice that doesn't assert absence is left untouched. After a drop,
+ * the existing empty-subsection cleaner + renumber pass tidy up.
+ */
+function pageScanPresentFeatures(pages = []) {
+  const present = new Set();
+  for (const p of pages) {
+    const flags = p.flags || {};
+    const obs = p.observed || {};
+    const pt = p.pageType || "general";
+    const corpus = [
+      p.textSnippet,
+      p.footerText,
+      p.heroText,
+      (obs.navLabels || []).join(" "),
+      (obs.ctaLabels || []).join(" "),
+      Array.isArray(p.links) ? p.links.join(" ") : ""
+    ].join(" ").toLowerCase();
+
+    // Collection filtering / sorting (scan markup signals + real text).
+    if (pt === "collection") {
+      if (
+        flags.hasCollectionFilter === true ||
+        /\?filter\.|filter by|refine by|all categories|shop by (category|room|collection)/i.test(corpus)
+      ) {
+        present.add("filtering");
+      }
+      if (flags.hasCollectionSort === true || /\?sort_by=|sort by/i.test(corpus)) {
+        present.add("sort");
+      }
+    }
+    // Site search (any page).
+    if (flags.hasSearchBar === true) present.add("search");
+    // Product reviews / ratings (product page).
+    if (pt === "product" && (flags.hasReviews === true || (obs.reviewCountText || "").trim().length)) {
+      present.add("reviews");
+    }
+    // FAQ — only if the literal phrase is on the page text.
+    if (/frequently asked questions|\bfaqs?\b/i.test(corpus)) present.add("faq");
+    // Size guide / fit guide.
+    if (flags.hasSizeGuide === true || /size (guide|chart)|fit (guide|finder)/i.test(corpus)) {
+      present.add("sizeGuide");
+    }
+  }
+  return present;
+}
+
+function stripContradictedByPageScan(markdown, pages = []) {
+  if (!markdown) return markdown;
+  const present = pageScanPresentFeatures(pages);
+  if (!present.size) return markdown;
+
+  // Title → feature mapping. Order matters (first match wins per title).
+  const TITLE_FEATURE = [
+    { feat: "filtering", re: /\b(filter|filtering|facet|faceted|refinement)\b/i },
+    { feat: "sort", re: /\bsort(ing)?\b/i },
+    { feat: "search", re: /\bsearch\b/i },
+    { feat: "reviews", re: /\b(review|ratings?)\b/i },
+    { feat: "faq", re: /\b(faq|frequently asked)\b/i },
+    { feat: "sizeGuide", re: /\bsize (guide|chart)\b|\bfit guide\b/i }
+  ];
+  const GAP = /\b(lacks?|missing|absent|no\b|none|basic|limited|minimal|could be (more|better)|not (present|available|comprehensive|robust)|isn'?t|aren'?t|lacking)\b/i;
+
+  const lines = markdown.split(/\r?\n/);
+  const out = [];
+  let inImprovementZone = false;
+  let dropped = 0;
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (/^##\s+/.test(line)) {
+      inImprovementZone = /key areas of improvement/i.test(line);
+      out.push(line);
+      i += 1;
+      continue;
+    }
+    const headingMatch = inImprovementZone && /^###\s+\d+\.\s+(.+)$/.exec(line.trim());
+    if (headingMatch) {
+      const title = headingMatch[1];
+      // Collect this subsection's body (until next ### or ##).
+      let j = i + 1;
+      const body = [];
+      while (j < lines.length && !/^###\s+/.test(lines[j].trim()) && !/^##\s+/.test(lines[j])) {
+        body.push(lines[j]);
+        j += 1;
+      }
+      const blockText = (title + " " + body.join(" ")).toLowerCase();
+      const featHit = TITLE_FEATURE.find((tf) => tf.re.test(title));
+      const isPresent = featHit && present.has(featHit.feat);
+      const framedAsGap = GAP.test(blockText);
+      if (isPresent && framedAsGap) {
+        dropped += 1;
+        i = j; // skip heading + body entirely
+        continue;
+      }
+      out.push(line);
+      i += 1;
+      continue;
+    }
+    out.push(line);
+    i += 1;
+  }
+  if (dropped > 0) {
+    console.log(
+      `stripContradictedByPageScan: dropped ${dropped} finding(s) for features the page scan found present (${Array.from(present).join(", ")})`
+    );
+  }
+  return out.join("\n").replace(/\n{3,}/g, "\n\n");
+}
+
+/**
  * Normalize finding headings inside "Key Areas of Improvement" zones to the
  * "### N. Title" form the subsection-level cleaners expect. The prompt now asks
  * for "### " explicitly, but if the model emits a bare numbered heading
@@ -1034,6 +1155,7 @@ function enforceSignalConsistency(markdown, signalFacts, pages = []) {
   out = stripGalleryExpansionWhenRich(out, pages);
   out = stripHeroChromeWhenPresent(out, pages);
   out = stripCardDetailWhenPresent(out, pages, signalFacts);
+  out = stripContradictedByPageScan(out, pages);
   out = stripJunkCtaFindings(out);
   out = stripGenericRecommendations(out);
   out = stripExtraGenericBullets(out);
@@ -2275,4 +2397,5 @@ ${reliabilityChecks.failures.map((f, idx) => `${idx + 1}. ${f}`).join("\n")}
       failures: reliabilityChecks.failures
     }
   };
+
 }

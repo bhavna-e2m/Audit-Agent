@@ -1716,7 +1716,7 @@
     const strong = [];
     const weak = [];
 
-    // Shopify 2.0 standard
+    // Shopify 2.0 standard facet form.
     if (anyMatches($, [
       "facet-filters-form",
       "filter-form",
@@ -1727,6 +1727,38 @@
       "form[id*='filter']"
     ])) {
       strong.push("Shopify facet/filter form present");
+    }
+
+    // Faceted-filter links (theme-agnostic): hrefs carrying filter.* / ?filter
+    // query params are an unambiguous Shopify filtering signal regardless of theme.
+    if ($("a[href*='filter.'], a[href*='?filter'], a[href*='&filter'], a[href*='filter.v']").length) {
+      strong.push("faceted filter links (filter.* query params) present");
+    }
+
+    // Category-refinement list: a sidebar/aside/nav-style block that links out to
+    // several category collections (e.g. Hyper's "All Categories" list). Many
+    // themes implement "filtering" as category refinement rather than a facet form.
+    let categoryRefine = false;
+    $("aside, [class*='facet' i], [class*='filter' i], [class*='categor' i], [class*='refine' i], [class*='sidebar' i], [class*='collection-nav' i]").each((_, el) => {
+      if (categoryRefine) return;
+      const $el = $(el);
+      // ignore header/nav/mega-menu chrome
+      if ($el.closest("header, nav, [class*='mega-menu' i], [class*='drawer' i], [class*='modal' i]").length) return;
+      const collLinks = $el.find("a[href*='/collections/']").length;
+      if (collLinks >= 4) categoryRefine = true;
+    });
+    if (!categoryRefine && /all categories/i.test(text || "")) {
+      // "All Categories" heading paired with multiple category links anywhere in main.
+      const collLinks = $("main a[href*='/collections/'], [role='main'] a[href*='/collections/']").length;
+      if (collLinks >= 4) categoryRefine = true;
+    }
+    if (categoryRefine) {
+      strong.push("category-refinement list (multiple category links) present");
+    }
+
+    // A visible filter toggle/button (mobile-style filter panels).
+    if ($("button[aria-label*='filter' i], [class*='filter-toggle' i], [class*='filters-toggle' i], button:contains('Filter'), summary:contains('Filter')").length) {
+      weak.push("filter toggle / button present");
     }
 
     if (classOrAttrLooseMatch($, [
@@ -1742,8 +1774,8 @@
       weak.push("element class matches filter/facet/refinement");
     }
 
-    if (textContainsAny(text, [/\bfilter by\b/i, /\brefine by\b/i, /\bshop by\b/i])) {
-      weak.push("page text contains 'filter by' / 'refine by' / 'shop by'");
+    if (textContainsAny(text, [/\bfilter by\b/i, /\brefine by\b/i, /\bshop by\b/i, /\ball categories\b/i])) {
+      weak.push("page text contains 'filter by' / 'refine by' / 'shop by' / 'all categories'");
     }
 
     return resultFromSignals(strong, weak);
@@ -1758,10 +1790,17 @@
     if ($("select[name='sort_by'], select[name*='sort'], [data-sort], [data-sort-by]").length) {
       strong.push("sort select / data-sort attribute present");
     }
-    if (classOrAttrLooseMatch($, ["sort-by", "collection-sort", "sort-menu", "sort-dropdown"])) {
+    // Sort links carrying ?sort_by= are an unambiguous Shopify sort signal.
+    if ($("a[href*='sort_by='], a[href*='?sort'], a[href*='&sort']").length) {
+      strong.push("sort links (sort_by query param) present");
+    }
+    if (classOrAttrLooseMatch($, ["sort-by", "collection-sort", "sort-menu", "sort-dropdown", "sorting"])) {
       weak.push("element class matches sort dropdown pattern");
     }
-    if (textContainsAny(text, [/\bsort by\b/i, /\bsorted by\b/i])) {
+    if ($("button[aria-label*='sort' i], [class*='sort-toggle' i], summary:contains('Sort')").length) {
+      weak.push("sort toggle / button present");
+    }
+    if (textContainsAny(text, [/\bsort by\b/i, /\bsorted by\b/i, /\bsort:\b/i])) {
       weak.push("page text contains 'sort by'");
     }
     return resultFromSignals(strong, weak);
