@@ -340,6 +340,16 @@ a.download:hover {
   font-size: 14px;
 }
 
+.live-crawl-note {
+  margin: 8px 0 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+  font-size: 13px;
+}
+
 .live-crawl-list .live-crawl-item.is-crawling {
   border-color: #c08b5a;
   background: #fff3e6;
@@ -356,8 +366,19 @@ a.download:hover {
   opacity: 0.85;
 }
 
+.live-crawl-list .live-crawl-item.is-failed {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  opacity: 0.88;
+}
+
 .crawl-status.blocked {
   color: #991b1b;
+  animation: none;
+}
+
+.crawl-status.failed {
+  color: #c2410c;
   animation: none;
 }
 

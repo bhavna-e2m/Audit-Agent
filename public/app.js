@@ -53,16 +53,30 @@ function renderLiveCrawlPanel() {
     (a, b) => a.order - b.order
   );
   const crawling = pageEntries.find((p) => p.status === "crawling");
+  const blockedCount = pageEntries.filter((p) => p.status === "blocked").length;
+  const visibleEntries =
+    blockedCount > 3
+      ? [
+          ...pageEntries.filter((p) => p.status !== "blocked"),
+          ...pageEntries.filter((p) => p.status === "blocked").slice(0, 1)
+        ]
+      : pageEntries;
+  const blockedSummary =
+    blockedCount > 3
+      ? `<p class="live-crawl-note">${blockedCount} product URL(s) hit bot protection; additional product pages were not retried.</p>`
+      : "";
 
-  const listHtml = pageEntries.length
-    ? `<ul class="crawl-list live-crawl-list">${pageEntries
+  const listHtml = visibleEntries.length
+    ? `<ul class="crawl-list live-crawl-list">${visibleEntries
         .map((page) => {
           const statusClass =
             page.status === "crawling"
               ? "is-crawling"
               : page.status === "blocked"
                 ? "is-blocked"
-                : "is-done";
+                : page.status === "failed"
+                  ? "is-failed"
+                  : "is-done";
           const badge = page.requestedAsAdditional
             ? ' <span class="page-badge">Additional</span>'
             : "";
@@ -72,7 +86,9 @@ function renderLiveCrawlPanel() {
               ? '<span class="crawl-status">Scanning…</span>'
               : page.status === "blocked"
                 ? '<span class="crawl-status blocked">Blocked</span>'
-                : "";
+                : page.status === "failed"
+                  ? '<span class="crawl-status failed">Page error</span>'
+                  : "";
           return `<li class="live-crawl-item ${statusClass}" data-order="${page.order}">
             <span class="page-type">${escapeHtml(pageTypeLabel(page.pageType))}</span>${badge}
             ${statusText}
@@ -91,6 +107,7 @@ function renderLiveCrawlPanel() {
         : `<p class="live-crawl-current">Crawl in progress…</p>`
     }
     ${liveCrawlState.theme ? formatThemeHtml(liveCrawlState.theme) : ""}
+    ${blockedSummary}
     ${listHtml}
   `;
 
@@ -139,6 +156,8 @@ function handleAuditStreamEvent(event) {
       setStatus(`Scanning ${label} page…`, "success", null);
     } else if (data.status === "blocked") {
       setStatus(`Blocked by bot protection: ${label}`, "error", null);
+    } else if (data.status === "failed") {
+      setStatus(`Page error (not audited): ${label}`, "error", null);
     } else {
       setStatus(`Finished ${label} page (${data.order})`, "success", null);
     }
@@ -246,14 +265,19 @@ function formatThemeHtml(theme) {
       : { displayName: theme || "Not clearly detected", schemaName: "", instanceName: "" };
 
   if (!resolved.displayName || resolved.displayName === "Not clearly detected") {
-    return `<div><strong>Theme:</strong> Not clearly detected</div>`;
+    return `<div><strong>Theme name:</strong> Not clearly detected</div>`;
   }
 
-  const schemaLabel = resolved.schemaName || resolved.displayName;
-  let html = `<div><strong>Theme (schema):</strong> ${escapeHtml(schemaLabel)}</div>`;
+  const themeName =
+    resolved.instanceName || resolved.schemaName || resolved.displayName;
+  let html = `<div><strong>Theme name:</strong> ${escapeHtml(themeName)}</div>`;
 
-  if (resolved.instanceName && resolved.instanceName !== schemaLabel) {
-    html += `<div class="theme-meta"><strong>Theme label:</strong> ${escapeHtml(resolved.instanceName)}</div>`;
+  if (
+    resolved.schemaName &&
+    resolved.instanceName &&
+    resolved.instanceName !== resolved.schemaName
+  ) {
+    html += `<div class="theme-meta"><strong>Base theme:</strong> ${escapeHtml(resolved.schemaName)}</div>`;
   }
   if (resolved.schemaVersion) {
     html += `<div class="theme-meta"><strong>Schema version:</strong> ${escapeHtml(resolved.schemaVersion)}</div>`;

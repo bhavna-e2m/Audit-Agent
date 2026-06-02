@@ -29,7 +29,7 @@ export function parseArgs(argv) {
 }
 
 export function normalizeUrl(input) {
-  try {
+  try { 
     const u = new URL(input);
     u.hash = "";
     return u.toString();
