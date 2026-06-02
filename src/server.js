@@ -43,7 +43,8 @@ function resolveAuditParams(body = {}) {
   const normalized = normalizeStoreUrl(url || "");
   const isVercel = Boolean(process.env.VERCEL);
   const fastModeRequested = fastMode === true || String(fastMode).toLowerCase() === "true";
-  const defaultMaxPages = isVercel ? (fastModeRequested ? 1 : 4) : fastModeRequested ? 2 : 6;
+  // Keep deployed behavior aligned with local defaults.
+  const defaultMaxPages = fastModeRequested ? 2 : 6;
 
   const rootHostname = normalized ? new URL(normalized).hostname.replace(/^www\./, "") : "";
   const normalizedAdditionalPages = Array.isArray(additionalPageUrls)
@@ -55,13 +56,10 @@ function resolveAuditParams(body = {}) {
     : [];
 
   const requestedMaxPages = Number(maxPages || defaultMaxPages);
-    const pagesPerType = DEFAULT_PAGES_PER_TYPE;
-    const coreStorefrontPages = isVercel
-      ? defaultMaxPages
-      : getCoreStorefrontPageBudget(pagesPerType);
-  const minimumPagesForRequestedExtras = isVercel
-    ? requestedMaxPages
-    : coreStorefrontPages + normalizedAdditionalPages.length;
+  const pagesPerType = DEFAULT_PAGES_PER_TYPE;
+  const coreStorefrontPages = getCoreStorefrontPageBudget(pagesPerType);
+  const minimumPagesForRequestedExtras =
+    coreStorefrontPages + normalizedAdditionalPages.length;
   const resolvedMaxPages = Math.max(requestedMaxPages, minimumPagesForRequestedExtras);
 
   return {
@@ -73,8 +71,8 @@ function resolveAuditParams(body = {}) {
     appBaseUrl: typeof appBaseUrl === "string" ? appBaseUrl : "",
     createMarkdown: createMarkdown !== false,
     createGoogleDoc: Boolean(createGoogleDoc),
-    includeScreenshots: isVercel ? false : includeScreenshots === true,
-    includeReferenceBenchmarks: isVercel ? false : includeReferenceBenchmarks === true,
+    includeScreenshots: includeScreenshots === true,
+    includeReferenceBenchmarks: includeReferenceBenchmarks === true,
     referenceScreenshots: Array.isArray(referenceScreenshots) ? referenceScreenshots : [],
     referenceSiteUrls: Array.isArray(referenceSiteUrls) ? referenceSiteUrls : []
   };
